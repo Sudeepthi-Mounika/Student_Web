@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
+import LandingPage from "./LandingPage";
 import LoginPage from "./LoginPage";
 import SignupPage from "./SignupPage";
+import VideoIntro from "./VideoIntro";
+
+
 
 function App() {
-  const [page, setPage] = useState("login"); // "login" | "signup" | "dashboard"
+  const [showVideo, setShowVideo] = useState(true);
+  const [page, setPage] = useState("landing");
   const [currentUser, setCurrentUser] = useState(null); // {id,name,email,password,role}
 
   // ------- USERS (stored in localStorage) -------
@@ -141,77 +146,116 @@ function App() {
     };
     setMessages((prev) => [...prev, msg]);
   };
-
-  const isAuthPage = page === "login" || page === "signup";
-
-  return (
-    <div className="app-root">
-      <div className="background-layer" />
-
-      {isAuthPage ? (
-        // -------- LOGIN / SIGNUP SCREENS --------
-        <div className="auth-container">
-          <div className="brand-side">
-            <h1 className="brand-title">Extracurricular Achievement Portal</h1>
-            <p className="brand-text">
-              Track awards, recognitions and participation beyond academics.
-            </p>
-            <ul className="brand-list">
-              <li>Admins record and manage achievements</li>
-              <li>Students view their own achievements</li>
-              <li>Includes demo payments, chats & dashboard</li>
-            </ul>
-          </div>
-
-          <div className="form-side">
-            {page === "login" ? (
-              <LoginPage
-                onLogin={handleLogin}
-                goToSignup={() => setPage("signup")}
-              />
-            ) : (
-              <SignupPage
-                onSignup={handleSignup}
-                goToLogin={() => setPage("login")}
-              />
-            )}
-          </div>
-        </div>
-      ) : (
-        // -------- DASHBOARD --------
-        <div className="dashboard-root">
-          <Header />
-          <TopBar currentUser={currentUser} onLogout={handleLogout} />
-
-          {currentUser?.role === "admin" ? (
-            <AdminDashboard
-              achievements={achievements}
-              users={users}
-              payments={payments}
-              messages={messages}
-              currentUser={currentUser}
-              onAdd={handleAddAchievement}
-              onUpdate={handleUpdateAchievement}
-              onDelete={handleDeleteAchievement}
-              onSendMessage={handleSendMessage}
-            />
-          ) : (
-            <StudentDashboard
-              achievements={achievements}
-              currentUser={currentUser}
-              users={users}
-              payments={payments}
-              messages={messages}
-              onPay={handleStudentPayment}
-              onSendMessage={handleSendMessage}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  );
+if (showVideo) {
+  return <VideoIntro onFinish={() => setShowVideo(false)} />;
 }
+  return (
+  <div className="app-root">
+    <div className="background-layer" />
 
+    {/* -------- LANDING PAGE -------- */}
+    {page === "landing" && (
+      <LandingPage
+        goToLogin={() => setPage("login")}
+        goToSignup={() => setPage("signup")}
+      />
+      
+    )}
+
+    {/* -------- LOGIN PAGE -------- */}
+    {page === "login" && (
+      <div className="auth-container">
+        <div className="brand-side ultra-brand">
+          <div className="logo-card">
+            <img
+              src="/Logo.png"
+              alt="Student Web Portal"
+              className="ultra-logo"
+            />
+          </div>
+
+          <h1 className="ultra-title">
+            Student Web Portal
+          </h1>
+
+          <p className="ultra-subtitle">
+            Track. Manage. Showcase Achievements.
+          </p>
+        </div>
+
+        <div className="form-side">
+          <LoginPage
+            onLogin={handleLogin}
+            goToSignup={() => setPage("signup")}
+          />
+        </div>
+      </div>
+    )}
+
+    {/* -------- SIGNUP PAGE -------- */}
+    {page === "signup" && (
+      <div className="auth-container">
+        <div className="brand-side ultra-brand">
+          <div className="logo-card">
+            <img
+              src="/Logo.png"
+              alt="Student Web Portal"
+              className="ultra-logo"
+            />
+          </div>
+
+          <h1 className="ultra-title">
+            Student Web Portal
+          </h1>
+
+          <p className="ultra-subtitle">
+            Track. Manage. Showcase Achievements.
+          </p>
+        </div>
+
+        <div className="form-side">
+          <SignupPage
+            onSignup={handleSignup}
+            goToLogin={() => setPage("login")}
+          />
+        </div>
+      </div>
+    )}
+
+    {/* -------- DASHBOARD -------- */}
+    {page === "dashboard" && (
+      <div className="dashboard-root">
+        <Header />
+        <TopBar currentUser={currentUser} onLogout={handleLogout} />
+
+        {currentUser?.role === "admin" ? (
+          <AdminDashboard
+            achievements={achievements}
+            users={users}
+            payments={payments}
+            messages={messages}
+            currentUser={currentUser}
+            onAdd={handleAddAchievement}
+            onUpdate={handleUpdateAchievement}
+            onDelete={handleDeleteAchievement}
+            onSendMessage={handleSendMessage}
+          />
+        ) : (
+          <StudentDashboard
+            achievements={achievements}
+            currentUser={currentUser}
+            users={users}
+            payments={payments}
+            messages={messages}
+            onPay={handleStudentPayment}
+            onSendMessage={handleSendMessage}
+          />
+        )}
+      </div>
+    )}
+  </div>
+);
+}
 export default App;
 
 /* ------------------ HEADER ------------------ */
@@ -450,6 +494,7 @@ function StudentDashboard({
       </div>
     </div>
   );
+  
 }
 
 /* ------------------ CHAT PANEL (ADMIN / STUDENT) ------------------ */
