@@ -4,98 +4,102 @@ import LandingPage from "./LandingPage";
 import LoginPage from "./LoginPage";
 import SignupPage from "./SignupPage";
 import VideoIntro from "./VideoIntro";
-
-
+import API from "./api";
 
 function App() {
   const [showVideo, setShowVideo] = useState(true);
   const [page, setPage] = useState("landing");
-  const [currentUser, setCurrentUser] = useState(null); // {id,name,email,password,role}
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // ------- USERS (stored in localStorage) -------
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem("users");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // ------- ACHIEVEMENTS -------
-  const [achievements, setAchievements] = useState(() => {
-    const saved = localStorage.getItem("achievements");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // ------- PAYMENTS (demo payment records) -------
-  const [payments, setPayments] = useState(() => {
-    const saved = localStorage.getItem("payments");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // ------- CHATS (messages) -------
-  const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem("messages");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // sync to localStorage
-  useEffect(() => {
-    localStorage.setItem("users", JSON.stringify(users));
-  }, [users]);
+  const [users, setUsers] = useState([]);
+  const [achievements, setAchievements] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem("achievements", JSON.stringify(achievements));
-  }, [achievements]);
+    fetchUsers();
+    fetchAchievements();
+    fetchPayments();
+    fetchMessages();
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem("payments", JSON.stringify(payments));
-  }, [payments]);
-
-  useEffect(() => {
-    localStorage.setItem("messages", JSON.stringify(messages));
-  }, [messages]);
-
-  const generateId = () =>
-    Date.now().toString() + Math.random().toString(36).slice(2);
-
-  // -------- AUTH: SIGNUP / LOGIN / LOGOUT --------
-  const handleSignup = (newUser) => {
-    const email = newUser.email.trim().toLowerCase();
-
-    const exists = users.some(
-      (u) => u.email.toLowerCase() === email
-    );
-    if (exists) {
-      alert("This email is already registered. Please login instead.");
-      return;
+  const fetchUsers = async () => {
+    try {
+      const res = await API.get("/auth/users");
+      setUsers(res.data);
+    } catch (error) {
+      console.error("Error fetching users:", error);
     }
-
-    const userWithId = {
-      id: generateId(),
-      name: newUser.name.trim(),
-      email,
-      password: newUser.password,
-      role: newUser.role, // "admin" or "student"
-    };
-
-    setUsers((prev) => [...prev, userWithId]);
-    alert("Account created! You can login now.");
-    setPage("login");
   };
 
-  const handleLogin = ({ email, password }) => {
-    const cleanEmail = email.trim().toLowerCase();
-
-    const found = users.find(
-      (u) =>
-        u.email.toLowerCase() === cleanEmail && u.password === password
-    );
-
-    if (!found) {
-      alert("Invalid email or password");
-      return;
+  const fetchAchievements = async () => {
+    try {
+      const res = await API.get("/achievements");
+      setAchievements(res.data);
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
     }
+  };
 
-    setCurrentUser(found);
-    setPage("dashboard");
+  const fetchPayments = async () => {
+    try {
+      const res = await API.get("/payments");
+      setPayments(res.data);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+    }
+  };
+
+  const fetchMessages = async () => {
+    try {
+      const res = await API.get("/messages");
+      setMessages(res.data);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    }
+  };
+
+  const handleSignup = async (newUser) => {
+    try {
+      const res = await API.post("/auth/signup", {
+        name: newUser.name.trim(),
+        email: newUser.email.trim().toLowerCase(),
+        password: newUser.password,
+        role: newUser.role,
+      });
+
+      if (res.data.message) {
+        alert(res.data.message);
+        return;
+      }
+
+      alert("Account created! You can login now.");
+      fetchUsers();
+      setPage("login");
+    } catch (error) {
+      console.error("Signup error:", error);
+      alert("Signup failed");
+    }
+  };
+
+  const handleLogin = async ({ email, password }) => {
+    try {
+      const res = await API.post("/auth/login", {
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (res.data.message) {
+        alert(res.data.message);
+        return;
+      }
+
+      setCurrentUser(res.data);
+      setPage("dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Login failed");
+    }
   };
 
   const handleLogout = () => {
@@ -103,26 +107,45 @@ function App() {
     setPage("login");
   };
 
-  // -------- ACHIEVEMENTS HANDLERS (ADMIN) --------
-  const handleAddAchievement = (data) => {
-    const id = generateId();
-    setAchievements((prev) => [...prev, { id, ...data }]);
+  const handleAddAchievement = async (data) => {
+    try {
+      const res = await API.post("/achievements", data);
+      setAchievements((prev) => [...prev, res.data]);
+    } catch (error) {
+      console.error("Add achievement error:", error);
+      alert("Failed to add achievement");
+    }
   };
 
-  const handleUpdateAchievement = (updated) => {
-    setAchievements((prev) =>
-      prev.map((a) => (a.id === updated.id ? updated : a))
-    );
+  const handleUpdateAchievement = async (updated) => {
+    try {
+      const res = await API.put(`/achievements/${updated.id}`, updated);
+      setAchievements((prev) =>
+        prev.map((a) => (a.id === updated.id ? res.data : a))
+      );
+    } catch (error) {
+      console.error("Update achievement error:", error);
+      alert("Failed to update achievement");
+    }
   };
 
-  const handleDeleteAchievement = (id) => {
-    setAchievements((prev) => prev.filter((a) => a.id !== id));
+  const handleDeleteAchievement = async (id) => {
+    try {
+      await API.delete(`/achievements/${id}`);
+      setAchievements((prev) => prev.filter((a) => a.id !== id));
+    } catch (error) {
+      console.error("Delete achievement error:", error);
+      alert("Failed to delete achievement");
+    }
   };
 
-  // -------- PAYMENTS HANDLER (DEMO) --------
-  const handleStudentPayment = ({ studentName, studentEmail, amount, purpose }) => {
+  const handleStudentPayment = async ({
+    studentName,
+    studentEmail,
+    amount,
+    purpose,
+  }) => {
     const record = {
-      id: generateId(),
       studentName,
       studentEmail: studentEmail.toLowerCase(),
       amount,
@@ -130,135 +153,152 @@ function App() {
       status: "Success (Demo)",
       timestamp: new Date().toLocaleString(),
     };
-    setPayments((prev) => [record, ...prev]);
-    alert("Demo payment completed! (No real money processed)");
+
+    try {
+      const res = await API.post("/payments", record);
+      setPayments((prev) => [res.data, ...prev]);
+      alert("Demo payment completed!");
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert("Payment failed");
+    }
   };
 
-  // -------- CHAT HANDLER --------
-  const handleSendMessage = ({ from, to, text }) => {
+  const handleSendMessage = async ({ from, to, text }) => {
     if (!text.trim()) return;
+
     const msg = {
-      id: generateId(),
-      from,
-      to,
+      senderEmail: from,
+      receiverEmail: to,
       text: text.trim(),
       time: new Date().toLocaleTimeString(),
     };
-    setMessages((prev) => [...prev, msg]);
+
+    try {
+      const res = await API.post("/messages", msg);
+
+      const converted = {
+        ...res.data,
+        from: res.data.senderEmail,
+        to: res.data.receiverEmail,
+      };
+
+      setMessages((prev) => [...prev, converted]);
+    } catch (error) {
+      console.error("Message send error:", error);
+      alert("Failed to send message");
+    }
   };
-if (showVideo) {
-  return <VideoIntro onFinish={() => setShowVideo(false)} />;
-}
+
+  const normalizedMessages = messages.map((m) => ({
+    ...m,
+    from: m.from || m.senderEmail,
+    to: m.to || m.receiverEmail,
+  }));
+
+  if (showVideo) {
+    return <VideoIntro onFinish={() => setShowVideo(false)} />;
+  }
+
   return (
-  <div className="app-root">
-    <div className="background-layer" />
+    <div className="app-root">
+      <div className="background-layer" />
 
-    {/* -------- LANDING PAGE -------- */}
-    {page === "landing" && (
-      <LandingPage
-        goToLogin={() => setPage("login")}
-        goToSignup={() => setPage("signup")}
-      />
-      
-    )}
+      {page === "landing" && (
+        <LandingPage
+          goToLogin={() => setPage("login")}
+          goToSignup={() => setPage("signup")}
+        />
+      )}
 
-    {/* -------- LOGIN PAGE -------- */}
-    {page === "login" && (
-      <div className="auth-container">
-        <div className="brand-side ultra-brand">
-          <div className="logo-card">
-            <img
-              src="/Logo.png"
-              alt="Student Web Portal"
-              className="ultra-logo"
-            />
+      {page === "login" && (
+        <div className="auth-container">
+          <div className="brand-side ultra-brand">
+            <div className="logo-card">
+              <img
+                src="/Logo.png"
+                alt="Student Web Portal"
+                className="ultra-logo"
+              />
+            </div>
+
+            <h1 className="ultra-title">Student Web Portal</h1>
+            <p className="ultra-subtitle">
+              Track. Manage. Showcase Achievements.
+            </p>
           </div>
 
-          <h1 className="ultra-title">
-            Student Web Portal
-          </h1>
-
-          <p className="ultra-subtitle">
-            Track. Manage. Showcase Achievements.
-          </p>
-        </div>
-
-        <div className="form-side">
-          <LoginPage
-            onLogin={handleLogin}
-            goToSignup={() => setPage("signup")}
-          />
-        </div>
-      </div>
-    )}
-
-    {/* -------- SIGNUP PAGE -------- */}
-    {page === "signup" && (
-      <div className="auth-container">
-        <div className="brand-side ultra-brand">
-          <div className="logo-card">
-            <img
-              src="/Logo.png"
-              alt="Student Web Portal"
-              className="ultra-logo"
+          <div className="form-side">
+            <LoginPage
+              onLogin={handleLogin}
+              goToSignup={() => setPage("signup")}
             />
           </div>
-
-          <h1 className="ultra-title">
-            Student Web Portal
-          </h1>
-
-          <p className="ultra-subtitle">
-            Track. Manage. Showcase Achievements.
-          </p>
         </div>
+      )}
 
-        <div className="form-side">
-          <SignupPage
-            onSignup={handleSignup}
-            goToLogin={() => setPage("login")}
-          />
+      {page === "signup" && (
+        <div className="auth-container">
+          <div className="brand-side ultra-brand">
+            <div className="logo-card">
+              <img
+                src="/Logo.png"
+                alt="Student Web Portal"
+                className="ultra-logo"
+              />
+            </div>
+
+            <h1 className="ultra-title">Student Web Portal</h1>
+            <p className="ultra-subtitle">
+              Track. Manage. Showcase Achievements.
+            </p>
+          </div>
+
+          <div className="form-side">
+            <SignupPage
+              onSignup={handleSignup}
+              goToLogin={() => setPage("login")}
+            />
+          </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {/* -------- DASHBOARD -------- */}
-    {page === "dashboard" && (
-      <div className="dashboard-root">
-        <Header />
-        <TopBar currentUser={currentUser} onLogout={handleLogout} />
+      {page === "dashboard" && (
+        <div className="dashboard-root">
+          <Header />
+          <TopBar currentUser={currentUser} onLogout={handleLogout} />
 
-        {currentUser?.role === "admin" ? (
-          <AdminDashboard
-            achievements={achievements}
-            users={users}
-            payments={payments}
-            messages={messages}
-            currentUser={currentUser}
-            onAdd={handleAddAchievement}
-            onUpdate={handleUpdateAchievement}
-            onDelete={handleDeleteAchievement}
-            onSendMessage={handleSendMessage}
-          />
-        ) : (
-          <StudentDashboard
-            achievements={achievements}
-            currentUser={currentUser}
-            users={users}
-            payments={payments}
-            messages={messages}
-            onPay={handleStudentPayment}
-            onSendMessage={handleSendMessage}
-          />
-        )}
-      </div>
-    )}
-  </div>
-);
+          {currentUser?.role === "admin" ? (
+            <AdminDashboard
+              achievements={achievements}
+              users={users}
+              payments={payments}
+              messages={normalizedMessages}
+              currentUser={currentUser}
+              onAdd={handleAddAchievement}
+              onUpdate={handleUpdateAchievement}
+              onDelete={handleDeleteAchievement}
+              onSendMessage={handleSendMessage}
+            />
+          ) : (
+            <StudentDashboard
+              achievements={achievements}
+              currentUser={currentUser}
+              users={users}
+              payments={payments}
+              messages={normalizedMessages}
+              onPay={handleStudentPayment}
+              onSendMessage={handleSendMessage}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
+
 export default App;
 
-/* ------------------ HEADER ------------------ */
 function Header() {
   return (
     <header className="dash-header">
@@ -268,15 +308,13 @@ function Header() {
   );
 }
 
-/* ------------------ TOP BAR ------------------ */
 function TopBar({ currentUser, onLogout }) {
   if (!currentUser) return null;
   return (
     <div className="topbar">
       <div>
         <span>
-          Logged in as <strong>{currentUser.name}</strong> (
-          {currentUser.role})
+          Logged in as <strong>{currentUser.name}</strong> ({currentUser.role})
         </span>
         <div style={{ fontSize: "0.8rem", color: "#cbd5f5" }}>
           {currentUser.email}
@@ -289,7 +327,6 @@ function TopBar({ currentUser, onLogout }) {
   );
 }
 
-/* ------------------ ADMIN DASHBOARD ------------------ */
 function AdminDashboard({
   achievements,
   users,
@@ -304,9 +341,7 @@ function AdminDashboard({
   const [search, setSearch] = useState("");
 
   const filtered = achievements.filter((a) =>
-    (a.studentName || "")
-      .toLowerCase()
-      .includes(search.trim().toLowerCase())
+    (a.studentName || "").toLowerCase().includes(search.trim().toLowerCase())
   );
 
   const studentUsers = users.filter((u) => u.role === "student");
@@ -320,7 +355,6 @@ function AdminDashboard({
         <AdminSummary achievements={achievements} payments={payments} />
       </div>
 
-      {/* Achievements table */}
       <div className="card">
         <div className="table-header">
           <h4>All Achievements</h4>
@@ -339,7 +373,6 @@ function AdminDashboard({
         />
       </div>
 
-      {/* Payments overview */}
       <div className="card" style={{ marginTop: "1rem" }}>
         <h4>Recent Payments (Demo)</h4>
         {payments.length === 0 ? (
@@ -372,7 +405,6 @@ function AdminDashboard({
         )}
       </div>
 
-      {/* Registered Students (students only, no admins) */}
       <div className="card" style={{ marginTop: "1rem" }}>
         <h4>Registered Students</h4>
 
@@ -400,7 +432,6 @@ function AdminDashboard({
         )}
       </div>
 
-      {/* Chat with students */}
       <div className="card" style={{ marginTop: "1rem" }}>
         <h4>Chat with Students</h4>
         <ChatPanel
@@ -415,7 +446,6 @@ function AdminDashboard({
   );
 }
 
-/* ------------------ STUDENT DASHBOARD ------------------ */
 function StudentDashboard({
   achievements,
   currentUser,
@@ -441,7 +471,6 @@ function StudentDashboard({
 
       <StudentSummary achievements={mine} payments={myPayments} />
 
-      {/* Payment card */}
       <div className="card">
         <h4>Premium Features & Certificates (Demo Payment)</h4>
         <p>
@@ -465,13 +494,12 @@ function StudentDashboard({
 
         {myPayments.length > 0 && (
           <div style={{ marginTop: "1rem", fontSize: "0.9rem" }}>
-            <strong>Last payment status:</strong>{" "}
-            {myPayments[0].status} on {myPayments[0].timestamp}
+            <strong>Last payment status:</strong> {myPayments[0].status} on{" "}
+            {myPayments[0].timestamp}
           </div>
         )}
       </div>
 
-      {/* My achievements */}
       <div className="card" style={{ marginTop: "1rem" }}>
         <h4>My Achievements</h4>
         {mine.length === 0 ? (
@@ -481,7 +509,6 @@ function StudentDashboard({
         )}
       </div>
 
-      {/* Chat with admin */}
       <div className="card" style={{ marginTop: "1rem" }}>
         <h4>Chat with Admin</h4>
         <ChatPanel
@@ -494,10 +521,8 @@ function StudentDashboard({
       </div>
     </div>
   );
-  
 }
 
-/* ------------------ CHAT PANEL (ADMIN / STUDENT) ------------------ */
 function ChatPanel({ mode, currentUser, users, messages, onSend }) {
   const [selectedEmail, setSelectedEmail] = useState("");
   const [text, setText] = useState("");
@@ -505,7 +530,6 @@ function ChatPanel({ mode, currentUser, users, messages, onSend }) {
   const adminUsers = users.filter((u) => u.role === "admin");
   const studentUsers = users.filter((u) => u.role === "student");
 
-  // default chat target
   useEffect(() => {
     if (mode === "admin" && !selectedEmail && studentUsers.length > 0) {
       setSelectedEmail(studentUsers[0].email);
@@ -560,7 +584,9 @@ function ChatPanel({ mode, currentUser, users, messages, onSend }) {
       {mode === "student" && (
         <p style={{ marginBottom: "0.5rem", fontSize: "0.9rem" }}>
           Chatting with{" "}
-          <strong>{getName(selectedEmail)} ({selectedEmail})</strong>
+          <strong>
+            {getName(selectedEmail)} ({selectedEmail})
+          </strong>
         </p>
       )}
 
@@ -600,7 +626,6 @@ function ChatPanel({ mode, currentUser, users, messages, onSend }) {
   );
 }
 
-/* ------------------ ADD ACHIEVEMENT FORM (ADMIN) ------------------ */
 function AchievementForm({ onAdd, users }) {
   const [formData, setFormData] = useState({
     studentEmail: "",
@@ -619,11 +644,7 @@ function AchievementForm({ onAdd, users }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (
-      !formData.studentEmail ||
-      !formData.activity ||
-      !formData.date
-    ) {
+    if (!formData.studentEmail || !formData.activity || !formData.date) {
       alert("Please select student, activity and date.");
       return;
     }
@@ -755,7 +776,6 @@ function AchievementForm({ onAdd, users }) {
   );
 }
 
-/* ------------------ SUMMARY CARDS ------------------ */
 function AdminSummary({ achievements, payments }) {
   const total = achievements.length;
   const awards = achievements.filter((a) => a.category === "Award").length;
@@ -768,18 +788,13 @@ function AdminSummary({ achievements, payments }) {
 
   const totalPayments = payments.length;
   const totalAmount = payments.reduce((sum, p) => {
-    // amount like "₹499" -> number 499 if possible
-    const num = parseInt(
-      String(p.amount).replace(/[^0-9]/g, ""),
-      10
-    );
+    const num = parseInt(String(p.amount).replace(/[^0-9]/g, ""), 10);
     return sum + (isNaN(num) ? 0 : num);
   }, 0);
 
   return (
     <div className="card">
       <h4>Summary</h4>
-
       <div className="summary-grid">
         <SummaryCard label="Total Achievements" value={total} />
         <SummaryCard label="Awards" value={awards} />
@@ -805,7 +820,6 @@ function StudentSummary({ achievements, payments }) {
   return (
     <div className="card">
       <h4>My Summary</h4>
-
       <div className="summary-grid">
         <SummaryCard label="Total" value={total} />
         <SummaryCard label="Awards" value={awards} />
@@ -826,16 +840,12 @@ function SummaryCard({ label, value }) {
   );
 }
 
-/* ------------------ TABLE ------------------ */
 function AchievementTable({ achievements, onUpdate, onDelete }) {
   const handleEdit = (achievement) => {
     const activity = prompt("New Activity", achievement.activity);
     if (activity === null) return;
 
-    const description = prompt(
-      "New Description",
-      achievement.description || ""
-    );
+    const description = prompt("New Description", achievement.description || "");
     if (description === null) return;
 
     onUpdate({ ...achievement, activity, description });
@@ -888,7 +898,6 @@ function AchievementTable({ achievements, onUpdate, onDelete }) {
   );
 }
 
-/* ------------------ STUDENT LIST ------------------ */
 function AchievementList({ achievements }) {
   return (
     <ul className="achievement-list">
