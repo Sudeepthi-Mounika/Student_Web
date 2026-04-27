@@ -83,24 +83,19 @@ function App() {
   };
 
   const handleLogin = async ({ email, password }) => {
-    try {
-      const res = await API.post("/auth/login", {
-        email: email.trim().toLowerCase(),
-        password,
-      });
+  try {
+    const res = await API.post("/auth/login", {
+      email: email.trim().toLowerCase(),
+      password,
+    });
 
-      if (res.data.message) {
-        alert(res.data.message);
-        return;
-      }
-
-      setCurrentUser(res.data);
-      setPage("dashboard");
-    } catch (error) {
-      console.error("Login error:", error);
-      alert("Login failed");
-    }
-  };
+    localStorage.setItem("token", res.data.token);
+    setCurrentUser(res.data.user);
+    setPage("dashboard");
+  } catch (error) {
+    alert(error?.response?.data?.message || "Login failed");
+  }
+};
 
   const handleLogout = () => {
     setCurrentUser(null);
