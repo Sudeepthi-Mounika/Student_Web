@@ -17,11 +17,18 @@ function App() {
   const [messages, setMessages] = useState([]);
 
   useEffect(() => {
-    fetchUsers();
-    fetchAchievements();
-    fetchPayments();
-    fetchMessages();
-  }, []);
+  const savedUser = localStorage.getItem("currentUser");
+
+  if (savedUser) {
+    setCurrentUser(JSON.parse(savedUser));
+    setPage("dashboard");
+  }
+
+  fetchUsers();
+  fetchAchievements();
+  fetchPayments();
+  fetchMessages();
+}, []);
 
   const fetchUsers = async () => {
     try {
@@ -60,27 +67,22 @@ function App() {
   };
 
   const handleSignup = async (newUser) => {
-    try {
-      const res = await API.post("/auth/signup", {
-        name: newUser.name.trim(),
-        email: newUser.email.trim().toLowerCase(),
-        password: newUser.password,
-        role: newUser.role,
-      });
+  try {
+    const res = await API.post("/auth/signup", {
+      name: newUser.name.trim(),
+      email: newUser.email.trim().toLowerCase(),
+      password: newUser.password,
+      role: newUser.role,
+    });
 
-      if (res.data.message) {
-        alert(res.data.message);
-        return;
-      }
-
-      alert("Account created! You can login now.");
-      fetchUsers();
-      setPage("login");
-    } catch (error) {
-      console.error("Signup error:", error);
-      alert("Signup failed");
-    }
-  };
+    alert(res.data.message || "Account created! You can login now.");
+    fetchUsers();
+    setPage("login");
+  } catch (error) {
+    console.error("Signup error:", error);
+    alert(error?.response?.data?.message || "Email already registered");
+  }
+};
 
   const handleLogin = async ({ email, password }) => {
   try {
@@ -89,7 +91,9 @@ function App() {
       password,
     });
 
-    localStorage.setItem("token", res.data.token);
+    localStorage.setItem("token", res.data.token || "");
+    localStorage.setItem("currentUser", JSON.stringify(res.data.user));
+
     setCurrentUser(res.data.user);
     setPage("dashboard");
   } catch (error) {
@@ -98,9 +102,12 @@ function App() {
 };
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    setPage("login");
-  };
+  localStorage.removeItem("token");
+  localStorage.removeItem("currentUser");
+
+  setCurrentUser(null);
+  setPage("login");
+};
 
   const handleAddAchievement = async (data) => {
     try {
