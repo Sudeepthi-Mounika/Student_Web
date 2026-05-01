@@ -19,9 +19,14 @@ function App() {
   useEffect(() => {
   const savedUser = localStorage.getItem("currentUser");
 
-  if (savedUser) {
-    setCurrentUser(JSON.parse(savedUser));
-    setPage("dashboard");
+  if (savedUser && savedUser !== "undefined") {
+    try {
+      setCurrentUser(JSON.parse(savedUser));
+      setPage("dashboard");
+    } catch (error) {
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("token");
+    }
   }
 
   fetchUsers();
@@ -91,10 +96,16 @@ function App() {
       password,
     });
 
-    localStorage.setItem("token", res.data.token || "");
-    localStorage.setItem("currentUser", JSON.stringify(res.data.user));
+    const loggedUser = res.data.user || res.data;
 
-    setCurrentUser(res.data.user);
+    if (!loggedUser || loggedUser.message) {
+      alert(loggedUser.message || "Login failed");
+      return;
+    }
+
+    localStorage.setItem("currentUser", JSON.stringify(loggedUser));
+
+    setCurrentUser(loggedUser);
     setPage("dashboard");
   } catch (error) {
     alert(error?.response?.data?.message || "Login failed");
